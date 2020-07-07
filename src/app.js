@@ -10,6 +10,22 @@ app.use(cors());
 
 const repositories = [];
 
+// Find repository middleware
+function findRepo(request, response, next) {
+  const {id} = request.params;
+  const repoIndex = repositories.findIndex(repository => repository.id === id);
+  console.log('REPO_INDEX: ', repoIndex);
+
+  if (repoIndex < 0) return response.status(400).json({error: 'Repository not found!'});
+
+  request.repository = repositories[repoIndex];
+  request.repositoryIndex = repoIndex;
+  return next();
+}
+
+app.use('/repositories/:id', findRepo);
+
+// Routes
 app.get("/repositories", (request, response) => {
   return response.json(repositories);
 });
@@ -31,40 +47,33 @@ app.post("/repositories", (request, response) => {
 });
 
 app.put("/repositories/:id", (request, response) => {
-  const {id} = request.params;
   const {title, url, techs} = request.body;
 
-  const repoIndex = repositories.findIndex(repository => repository.id === id);
+  const repo = {
+      id: request.repository.id, 
+      title, 
+      url, 
+      techs, 
+      likes: request.repository.likes
+    };
 
-  if (repoIndex < 0) return response.status(400).json({error: 'Repository not found!'});
-
-  const repo = {id, title, url, techs, likes: repositories[repoIndex].likes};
-  repositories[repoIndex] = repo;
+  request.repository = repo;
 
   return response.json(repo);
 });
 
 app.delete("/repositories/:id", (request, response) => {
-  const {id} = request.params;
-  const repoIndex = repositories.findIndex(repository => repository.id === id);
-
-  if (repoIndex < 0) return response.status(400).json({error: 'Repository not found!'});
-
-  repositories.splice(repoIndex, 1);
+  repositories.splice(request.repositoryIndex, 1);
 
   return response.status(204).send();
 });
 
 app.post("/repositories/:id/like", (request, response) => {
-  const {id} = request.params;
-  const repoIndex = repositories.findIndex(repository => repository.id === id);
+  request.repository.likes += 1;
 
-  if (repoIndex < 0) return response.status(400).json({error: 'Repository not found!'});
+  console.log('LIKES: ', request.repository);
 
-  
-  repositories[repoIndex].likes += 1;
-
-  return response.json(repositories[repoIndex]);
+  return response.json(request.repository);
 });
 
 module.exports = app;
